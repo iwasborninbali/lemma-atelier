@@ -92,6 +92,47 @@ def statement_window(p, c, x0, y0):
     P = points(p, c, x0, y0); L = rich_lines(P)
     return max_lawful(P, L)[0] <= 3 * (p - 1)
 
+def orbits_pattern(p, c, x0=None, y0=None):
+    """(n2, n1, n0, s1, s2) для окна W = [x0, x0+2p) × [y0, y0+2p) по определениям заметки (§All 2p×2p boxes): классы κ = (a, b), ab ≡ c;
+    V = {1, σ, τ, ν}, σ(a,b) = (−b,−a), τ(a,b) = (b,a), ν = στ; представители ρ_x(a) ∈ [x0, x0+p), ρ_y(b) ∈ [y0, y0+p);
+    d_κ = ρ_x(a) − ρ_y(b), e_κ = ρ_x(a) + ρ_y(b); σ-пара {κ, σκ} «общая», если d_σκ = d_κ, иначе «расщеплённая»; τ-пара — по e.
+    Общая орбита (4 класса): e_O = число расщеплённых σ-пар, f_O = число расщеплённых τ-пар; образцы {(0,2),(2,0)} → n2, (1,1) → n1, (0,0) → n0.
+    Исключительная орбита {κ, νκ} (κ фиксирован σ или τ): её пара расщеплена → s1, общая → s2."""
+    h = (p - 1) // 2
+    if x0 is None: x0 = -h
+    if y0 is None: y0 = 0
+    rx = lambda a: x0 + ((a - x0) % p); ry = lambda b: y0 + ((b - y0) % p)
+    classes = [(a, (c * pow(a, -1, p)) % p) for a in range(1, p)]
+    sig = lambda k: ((-k[1]) % p, (-k[0]) % p); tau = lambda k: (k[1], k[0])
+    d = lambda k: rx(k[0]) - ry(k[1]); e = lambda k: rx(k[0]) + ry(k[1])
+    seen = set(); n2 = n1 = n0 = s1 = s2 = 0
+    for k in classes:
+        if k in seen: continue
+        orb = {k, sig(k), tau(k), sig(tau(k))}; seen |= orb
+        if len(orb) == 4:
+            e_O = sum(1 for q in (k, tau(k)) if d(sig(q)) != d(q))          # σ-пары: {k, σk}, {τk, ντk = στk}
+            f_O = sum(1 for q in (k, sig(k)) if e(tau(q)) != e(q))          # τ-пары: {k, τk}, {σk, τσk}
+            if (e_O, f_O) in ((0, 2), (2, 0)): n2 += 1
+            elif (e_O, f_O) == (1, 1): n1 += 1
+            elif (e_O, f_O) == (0, 0): n0 += 1
+            else: raise ValueError(f"образец {(e_O, f_O)} вне орбитной леммы: p={p}, c={c}, окно ({x0},{y0})")
+        else:                                                               # исключительная орбита {k, νk}
+            if sig(k) == k: split = e(tau(k)) != e(k)                       # σ-фиксированный класс: орбита — τ-пара
+            else: split = d(sig(k)) != d(k)                                 # τ-фиксированный класс: орбита — σ-пара
+            if split: s1 += 1
+            else: s2 += 1
+    return n2, n1, n0, s1, s2
+
+def window_formula(p, c, x0=None, y0=None):
+    """(максимум, число максимумов) по Theorem window: 12n2 + 10n1 + 8n0 + 6s и 144^{n1}·1296^{n0}·9^{s1}·6^{s2}."""
+    n2, n1, n0, s1, s2 = orbits_pattern(p, c, x0, y0)
+    return 12 * n2 + 10 * n1 + 8 * n0 + 6 * (s1 + s2), 144 ** n1 * 1296 ** n0 * 9 ** s1 * 6 ** s2
+
+def statement_window_exact(p, c, x0, y0):
+    """True ⟺ точный максимум и число максимумов (перебор) равны формуле Theorem window."""
+    P = points(p, c, x0, y0); L = rich_lines(P)
+    return max_lawful(P, L) == window_formula(p, c, x0, y0)
+
 def generate(rnd, pmax=13):
     """случайные (p, c) и случайное окно."""
     primes = [q for q in range(3, pmax + 1) if all(q % d for d in range(2, int(q ** 0.5) + 1))]
@@ -117,4 +158,7 @@ if __name__ == "__main__":
         P = points(p, 1); L = rich_lines(P); m, cnt = max_lawful(P, L)
         print(f"p={p}: statement верно для всех c: {all(res)}; c=1: |P|={len(P)}, богатых прямых {len(L)}, max={m} (3(p−1)={3*(p-1)}), максимумов {cnt} (9^s={9**s_of(1, p)})")
     rnd = random.Random(1); ok = all(statement_window(*generate(rnd, 11)) for _ in range(30)); print("30 случайных окон (p ≤ 11): max ≤ 3(p−1):", ok)
+    for p in (5, 7):
+        allok = all(statement_window_exact(p, c, x0, y0) for c in range(1, p) for x0 in range(p) for y0 in range(p))
+        print(f"p={p}: формула окна (максимум и число максимумов) против перебора для всех c и всех окон (x0, y0 mod p): {allok}; окно HJSW: {orbits_pattern(p, 1)}")
     print("граница:", boundary_cases(7))
