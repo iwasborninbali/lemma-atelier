@@ -103,6 +103,33 @@ def spectrum_model(n, keys=((1,1), (1,2), (1,3), (2,3), (1,4), (1,5), (2,5), (3,
     Zr = (2 * n * n - 3 * n) / total
     return {k: sum(per[k]) / len(per[k]) / n * Zr for k in keys}, Zr
 
+def exact_vs_float(n, a, b):
+    """противник №1, правка 7: точная дробная E_{2n} (без деконволюции) против float-деконволюции spectrum_model для одного направления;
+    возвращает (E_exact, E_float, относительная разница)."""
+    from collections import Counter
+    lens = [len(l) for l in lines_of_direction(n, a, b)]; m = 2 * n
+    E_exact = expected_double_lines(lens, m)
+    cnt = Counter(lens); poly = [0.0] * (m + 1); poly[0] = 1.0
+    for L, c in cnt.items():
+        for _ in range(c):
+            new = [0.0] * (m + 1)
+            for k in range(m + 1):
+                if poly[k] == 0.0: continue
+                new[k] += poly[k]
+                if k + 1 <= m: new[k + 1] += poly[k] * L
+                if k + 2 <= m and L >= 2: new[k + 2] += poly[k] * comb(L, 2)
+            poly = new
+    Z = poly[m]; E_float = 0.0
+    for L, c in cnt.items():
+        if L < 2: continue
+        q = [0.0] * (m + 1); r = poly[:]
+        for k in range(m + 1):
+            q[k] = r[k]
+            if k + 1 <= m: r[k + 1] -= q[k] * L
+            if k + 2 <= m: r[k + 2] -= q[k] * comb(L, 2)
+        E_float += c * comb(L, 2) * q[m - 2] / Z
+    return E_exact, E_float, abs(float(E_exact) - E_float) / float(E_exact)
+
 def boundary_cases():
     """(а) без перенормировки модель систематически ниже базы на 13–26 % (n=20); (б) модель не воспроизводит константность по n
     (дрейф 3–8 % между n=20 и 40); (в) осевые направления: cap 2 выполняется тождественно (ровно две в строке), формула даёт E = n."""
@@ -111,5 +138,7 @@ def boundary_cases():
 if __name__ == "__main__":
     for n, a, b, m in generate(): print(f"n={n} v=({a},{b}) m={m}: утверждение {statement(n, a, b, m)}")
     print("осевое направление n=4, m=8 (две в каждой строке): E =", boundary_cases()["axis_n4_two_per_row"])
+    for (a, b) in ((1, 19), (7, 13), (9, 11), (1, 1)):
+        e, f, rel = exact_vs_float(20, a, b); print(f"деконволюция n=20 v=({a},{b}): точно {float(e):.6f}, float {f:.6f}, расхождение {rel:.1e}")
     mod, Z = spectrum_model(20); MEAS = {(1,1): 0.7306, (1,2): 0.5633, (1,3): 0.4545, (2,3): 0.4095, (1,4): 0.3744, (1,5): 0.3073, (2,5): 0.2846, (3,4): 0.3043}
     print("n=20, Z=%.3f:" % Z, {k: (round(v, 4), round(v / MEAS[k], 3)) for k, v in mod.items()})
