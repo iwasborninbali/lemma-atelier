@@ -1,3 +1,4 @@
 formal/.lake/
 __pycache__/
 *.pyc
+.env
