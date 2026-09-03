@@ -7,7 +7,8 @@
 4. Перенормировка spectrum_model: Z_n = (2n² − 3n)/Σ_v E_v по ВСЕМ неосевым примитивным направлениям (обе ориентации по знаку) — своим счётом при n = 8, 10;
    после перенормировки Σ_v c_v·n по всем таким направлениям = 2n² − 3n.
 5. Граница: без перенормировки модель занижает (Z_n > 1 при n = 20); дрейф по n есть (c_(1,1) при n = 12 и 24 различаются > 1 %).
-6. Применение (слепое измерение втора, база n = 19…57): модель при n = 30 в пределах 15 % от измеренных пятнадцати констант, порядок первых восьми совпадает."""
+6. Применение (слепое измерение втора, база n = 19…57): модель при n = 30 в пределах 15 % от измеренных пятнадцати констант, порядок первых восьми совпадает.
+7. Тест противника №1: float-деконволюция spectrum_model = точные дроби для крутых направлений (3,7), (1,7) при n = 20 (r = 179, 153 прямых)."""
 import itertools, random, unittest
 from fractions import Fraction
 from math import comb, gcd
@@ -104,6 +105,15 @@ class TestLem005(unittest.TestCase):
         self.assertTrue(all(0.85 <= r <= 1.15 for r in ratios.values()), f"вне 15 %: {ratios}")
         first8 = [(1,1), (1,2), (1,3), (1,4), (2,3), (1,5), (3,4), (2,5)]
         self.assertEqual(sorted(first8, key=lambda k: -MEAS[k]), sorted(first8, key=lambda k: -mod[k]), "порядок первых восьми должен совпасть")
+
+    def test_7_float_deconvolution_exact_for_steep_direction(self):
+        """тест противника №1: float-деконволюция в spectrum_model против точных дробей для крутого направления (много коротких прямых), n = 20."""
+        n = 20
+        for cl in ((3, 7), (1, 7)):
+            ori = [(cl[0], cl[1]), (cl[1], cl[0]), (cl[0], -cl[1]), (cl[1], -cl[0])]
+            exactE = sum(my_E([len(ln) for ln in my_lines(n, a, b)], 2 * n) for a, b in ori) / 4
+            mod, Zr = L.spectrum_model(n, keys=(cl,))
+            self.assertAlmostEqual(mod[cl], float(exactE) / n * Zr, delta=1e-9 * mod[cl], msg=f"float-деконволюция расходится с дробями для {cl}")
 
 if __name__ == "__main__":
     unittest.main()
