@@ -61,8 +61,8 @@ def boundary_case(n=4):
         acc[prof][0] += 1; acc[prof][1] += skew_collinear_triples(S)
         acc[prof][2] += sum(1 for a, b, c in itertools.combinations(sorted(S), 3) if len({a[0], b[0], c[0]}) == 3 and len({a[1], b[1], c[1]}) == 3)
     means = {p: Fraction(v[1], v[0]) for p, v in acc.items()}
-    ratio_ok = all(Fraction(v[1], v[0]) * (6 * math.comb(n, 3) ** 2) == Fraction(v[2], v[0]) * skew_collinear_cells(n) for v in acc.values() if v[2])
-    return len(set(means.values())) > 1, means, ratio_ok
+    boundary_case.ratio_ok = all(Fraction(v[1], v[0]) * (6 * math.comb(n, 3) ** 2) == Fraction(v[2], v[0]) * skew_collinear_cells(n) for v in acc.values() if v[2])
+    return len(set(means.values())) > 1, means   # общая форма (пропорция в каждом классе) — атрибут boundary_case.ratio_ok
 
 def skew_collinear_cells(n):
     """|B|: коллинеарные тройки клеток n×n не в одной строке/столбце (прямой счёт)."""
@@ -77,4 +77,4 @@ def noninvariant_measure_witness():
 if __name__ == "__main__":
     for n in (4, 5, 6):
         ok, means = statement(n); print(f"n={n}: типов {len(means)}, E[T|тип] одинаково: {ok}; значение {next(iter(means.values()))}")
-    varies, m, ratio_ok = boundary_case(4); print("граница (маргиналы не фиксированы): E[косых коллинеарных | профиль строк] зависит от профиля:", varies, "; общая форма E[N_B|𝒜]·|O| = |B|·E[N_O|𝒜] держится:", ratio_ok)
+    varies, m = boundary_case(4); ratio_ok = boundary_case.ratio_ok; print("граница (маргиналы не фиксированы): E[косых коллинеарных | профиль строк] зависит от профиля:", varies, "; общая форма E[N_B|𝒜]·|O| = |B|·E[N_O|𝒜] держится:", ratio_ok)
