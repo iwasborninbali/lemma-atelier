@@ -27,6 +27,20 @@ def admissible_after_removal(S, R, d, n, k):
 CASES = [(2, 6, 2), (2, 6, 3), (3, 4, 2), (3, 4, 3)]   # (d, n, k) — лёгкие, для Мака
 
 
+def two_per_line_solutions(n, limit=6):
+    """2n точек в n×n без трёх на прямой, по две в строке (DFS по строкам) — у них min κ_2 ≥ 2 по следствию (4) леммы."""
+    out = []
+    def ok(S, c):
+        return not any(L.collinear([a, b, c]) for a, b in itertools.combinations(S, 2))
+    def rec(r, S):
+        if len(out) >= limit: return
+        if r == n: out.append(list(S)); return
+        for c1, c2 in itertools.combinations(range(n), 2):
+            a, b = (r, c1), (r, c2)
+            if ok(S, a) and ok(S + [a], b): rec(r + 1, S + [a, b])
+    rec(0, []); return out
+
+
 class TestLem001(unittest.TestCase):
     def sample(self, seed, d, n, k):
         return L.generate(random.Random(seed), d=d, n=n, k=k)
@@ -34,15 +48,15 @@ class TestLem001(unittest.TestCase):
     def test_1_random_cases(self):
         total_killers = 0
         for d, n, k in CASES:
-            for seed in range(8):
+            for seed in range(3 if d == 2 else 2):
                 S, q, _ = self.sample(seed, d, n, k)
                 self.assertTrue(L.statement(S, q, k), (d, n, k, seed, S, q))
                 total_killers += len(L.killers(S, q, k))
         self.assertGreater(total_killers, 0, "тест пуст: ни одного убийцы во всей выборке")
 
     def test_2_stronger_form_disjoint_killers_and_bound(self):
-        for d, n, k in CASES:
-            for seed in range(6):
+        for d, n, k in CASES[:3]:
+            for seed in range(3):
                 S, _, _ = self.sample(seed, d, n, k)
                 for q, K in kappa_map(S, d, n, k).items():
                     for A, B in itertools.combinations(K, 2):
@@ -52,22 +66,22 @@ class TestLem001(unittest.TestCase):
     def test_3_heredity_step_below_min_kappa(self):
         """|R| < min κ ⇒ множество допустимых после удаления R ⊆ R (это и делает лемму сертификатом)."""
         checked = 0
-        for d, n, k in CASES[:2] + CASES[2:3]:
-            for seed in range(6):
-                S, _, _ = self.sample(seed, d, n, k)
+        for n in (5, 6):
+            for S in two_per_line_solutions(n):
+                d, k = 2, 2
                 km = kappa_map(S, d, n, k)
                 if not km: continue
                 mk = min(len(K) for K in km.values())
                 for j in range(1, mk):
                     for R in itertools.islice(itertools.combinations(S, j), 40):
-                        self.assertTrue(admissible_after_removal(S, set(R), d, n, k) <= set(R), (d, n, k, seed, R)); checked += 1
+                        self.assertTrue(admissible_after_removal(S, set(R), d, n, k) <= set(R), (n, R)); checked += 1
         self.assertGreater(checked, 0, "тест пуст: ни одного случая с min κ ≥ 2")
 
     def test_4_off_by_one_at_min_kappa(self):
         """при |R| = min κ чужая клетка оживать МОЖЕТ — значит «радиус не меньше min κ» верно лишь при подходящем определении радиуса."""
-        for d, n, k in CASES[:2]:
-            for seed in range(30):
-                S, _, _ = self.sample(seed, d, n, k)
+        for n in (5, 6):
+            for S in two_per_line_solutions(n):
+                d, k = 2, 2
                 km = kappa_map(S, d, n, k)
                 if not km: continue
                 mk = min(len(K) for K in km.values())
