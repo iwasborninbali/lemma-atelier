@@ -6,7 +6,9 @@
 P = {(x, y) ∈ G_p : xy ≡ c (mod p)}, |P| = 4(p−1). Множество законно, если нет трёх коллинеарных. Тогда:
  (i)  всякая прямая с ≥ 3 точками P имеет наклон ±1; таких прямых 3(p−1)/2 − s (p−1 с тремя точками, (p−1)/2 − s с четырьмя);
       ровно 2s точек P не лежат ни на одной богатой прямой; s = [c — КВ] + [−c — КВ] ∈ {0, 1, 2};
- (ii) максимум законного подмножества P равен 3(p−1) (и ЛП-релаксация «≤ 2 на богатую прямую» тоже даёт 3(p−1));
+ (ii) максимум законного подмножества P равен 3(p−1); ЛП-релаксация «≤ 2 на богатую прямую» имеет оптимум 3(p−1) — здесь это проверяется
+      слабой двойственностью: двойственный сертификат заметки (вес 1 каждой богатой прямой и вес 1 границе x_q ≤ 1 каждой из Z точек вне
+      богатых прямых) допустим и стоит Z + 2|L|; равенство Z + 2|L| = точному максимуму и есть проверка (целочисленность многогранника не утверждается);
  (iii) число законных подмножеств размера 3(p−1) равно 9^s.
 Theorem window: для любого окна W = [x0, x0+2p) × [y0, y0+2p) максимум законного подмножества H_c ∩ W не больше 3(p−1)."""
 import itertools, math, random, collections
@@ -75,8 +77,15 @@ def max_lawful(P, L):
         dfs(0, 0); total += best[0]; count *= best[1]
     return total, count
 
+def lp_certificate(P, L, m):
+    """слабая двойственность: двойственное решение (1 на каждую богатую прямую, 1 на границу x_q ≤ 1 для точек вне богатых прямых) допустимо
+    по построению и стоит Z + 2|L|; ЛП-оптимум = m ⟺ Z + 2|L| = m (m — точный целочисленный максимум, он же значение допустимого примала)."""
+    on_rich = set().union(*L.values()) if L else set(); Z = len(P) - len(on_rich)
+    return Z + 2 * len(L) == m
+
 def statement(p, c):
-    """True ⟺ (i)–(iii) для (p, c): наклоны ±1, число богатых прямых и их размеры, Z = 2s, максимум 3(p−1), число максимумов 9^s."""
+    """True ⟺ (i)–(iii) для (p, c): наклоны ±1, число богатых прямых и их размеры, Z = 2s, максимум 3(p−1) и ЛП-сертификат (Z + 2|L| = max),
+    число максимумов 9^s. Не проверяется: структурная часть (iii) «все максимумы совпадают с HJSW вне исключительных классов»."""
     P = points(p, c); L = rich_lines(P); s = s_of(c, p)
     if len(P) != 4 * (p - 1): return False
     if any(slope(k) not in (1.0, -1.0) for k in L): return False
@@ -85,7 +94,7 @@ def statement(p, c):
     on_rich = set().union(*L.values()) if L else set()
     if len(P) - len(on_rich) != 2 * s: return False
     m, cnt = max_lawful(P, L)
-    return m == 3 * (p - 1) and cnt == 9 ** s
+    return m == 3 * (p - 1) and cnt == 9 ** s and lp_certificate(P, L, m)
 
 def statement_window(p, c, x0, y0):
     """True ⟺ максимум законного подмножества H_c ∩ W не больше 3(p−1) для окна W = [x0, x0+2p) × [y0, y0+2p)."""
@@ -139,14 +148,13 @@ def generate(rnd, pmax=13):
     p = rnd.choice(primes); c = rnd.randrange(1, p); x0 = rnd.randrange(-p, p); y0 = rnd.randrange(-p, p)
     return p, c, x0, y0
 
-def boundary_cases(p=7):
-    """за границей условий: (а) составной модуль m = 9 — лемма Лагранжа (≤ 2 класса на прямой) не работает, богатые прямые других наклонов;
-    (б) окно шире 2p (2p+1 столбцов) — точек больше, максимум может превысить 3(p−1); (в) две гиперболы H(1) ∪ H(−1) в окне HJSW —
-    максимум больше 3(p−1) (статья: ≤ 4(p−1) − 4m₈)."""
-    out = {}
+def boundary_cases():
+    """за границей условий (все при p = 5 — у объединений компоненты велики для перебора): (а) составной модуль m = 9 — лемма Лагранжа
+    (≤ 2 класса на прямой) не работает, богатые прямые наклонов −1, 1/2, 1, 2; (б) окно шире 2p (2p+1 столбцов) — максимум 13 > 12 = 3(p−1);
+    (в) две гиперболы H(1) ∪ H(−1) в окне HJSW — максимум 14 > 12 (оценка заметки ≤ 4(p−1) − 4m₈ относится к 19 ≤ p ≤ 1500, p = 5 вне неё)."""
+    out = {}; p = 5
     m = 9; h = 4; Pm = [(x, y) for x in range(-h, 3 * h + 2) for y in range(0, 2 * m) if (x * y - 1) % m == 0]
     Lm = rich_lines(Pm); out["composite_modulus_9_slopes"] = sorted({slope(k) for k in Lm}, key=str)
-    p = min(p, 5)   # компоненты у объединений велики — граничные случаи считаем при p = 5
     h = (p - 1) // 2; Pw = [(x, y) for x in range(-h, 3 * h + 3) for y in range(0, 2 * p) if (x * y - 1) % p == 0]
     out["wider_window_max"] = (max_lawful(Pw, rich_lines(Pw))[0], 3 * (p - 1))
     P2 = sorted(set(points(p, 1)) | set(points(p, p - 1))); out["two_hyperbolae_max"] = (max_lawful(P2, rich_lines(P2))[0], 3 * (p - 1))
@@ -161,4 +169,5 @@ if __name__ == "__main__":
     for p in (5, 7):
         allok = all(statement_window_exact(p, c, x0, y0) for c in range(1, p) for x0 in range(p) for y0 in range(p))
         print(f"p={p}: формула окна (максимум и число максимумов) против перебора для всех c и всех окон (x0, y0 mod p): {allok}; окно HJSW: {orbits_pattern(p, 1)}")
-    print("граница:", boundary_cases(7))
+    print("p=3 (общих орбит нет: p − 1 = 2s): максимум 3(p−1) во всех 9 окнах:", all(max_lawful(points(3, c, x0, y0), rich_lines(points(3, c, x0, y0)))[0] == 6 for c in (1, 2) for x0 in range(3) for y0 in range(3)))
+    print("граница:", boundary_cases())
