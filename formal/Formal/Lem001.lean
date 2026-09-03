@@ -10,7 +10,7 @@ import Mathlib
 
 Формализовано: (1) дизъюнктность убийц; (2) через точку проходит ≤ 1 убийца; (3) `κ_k(q)·k ≤ |S|`;
 (4) шаг для радиуса обмена: если удалено меньше `κ_k(q)` точек, какой-то убийца `q` уцелел целиком
-(значит `q` остаётся недопустимой; наследственность семейства — отдельная тривиальная лемма ниже).
+(значит `q` остаётся недопустимой; наследственность семейства — отдельная лемма ниже).
 -/
 
 open Classical
@@ -53,10 +53,10 @@ theorem killers_disjoint {S : Finset P} {k : ℕ} {q : P} (hq : q ∉ S) (hS : G
   obtain ⟨hK₂S, hcard₂, ℓ₂, hℓ₂, hsub₂⟩ := (G.mem_killers).1 h₂
   have hpq : p ≠ q := fun h => hq (h ▸ hK₁S hp₁)
   obtain ⟨ℓ, ⟨hℓ, -, -⟩, huniq⟩ := G.unique_line hpq
-  have e₁ : ℓ₁ = ℓ :=
-    huniq ℓ₁ ⟨hℓ₁, hsub₁ p (Finset.mem_insert_of_mem hp₁), hsub₁ q (Finset.mem_insert_self q K₁)⟩
-  have e₂ : ℓ₂ = ℓ :=
-    huniq ℓ₂ ⟨hℓ₂, hsub₂ p (Finset.mem_insert_of_mem hp₂), hsub₂ q (Finset.mem_insert_self q K₂)⟩
+  have e₁ : ℓ₁ = ℓ := huniq ℓ₁
+    ⟨hℓ₁, hsub₁ p (Finset.mem_insert_of_mem hp₁), hsub₁ q (Finset.mem_insert_self q K₁)⟩
+  have e₂ : ℓ₂ = ℓ := huniq ℓ₂
+    ⟨hℓ₂, hsub₂ p (Finset.mem_insert_of_mem hp₂), hsub₂ q (Finset.mem_insert_self q K₂)⟩
   have hK₁ : K₁ ⊆ S.filter (· ∈ ℓ) := fun x hx =>
     Finset.mem_filter.2 ⟨hK₁S hx, e₁ ▸ hsub₁ x (Finset.mem_insert_of_mem hx)⟩
   have hK₂ : K₂ ⊆ S.filter (· ∈ ℓ) := fun x hx =>
@@ -79,30 +79,33 @@ theorem card_killers_through_le_one {S : Finset P} {k : ℕ} {q : P} (hq : q ∉
 /-- Следствие 2: `κ_k(q) · k ≤ |S|` — убийцы образуют дизъюнктное семейство `k`-подмножеств `S`. -/
 theorem kappa_mul_le {S : Finset P} {k : ℕ} {q : P} (hq : q ∉ S) (hS : G.NoKPlusOne S k) :
     G.kappa S k q * k ≤ S.card := by
-  have hdisj : ∀ K₁ ∈ G.killers S k q, ∀ K₂ ∈ G.killers S k q, K₁ ≠ K₂ → Disjoint (id K₁) (id K₂) :=
+  have hdisj : ∀ K₁ ∈ G.killers S k q, ∀ K₂ ∈ G.killers S k q,
+      K₁ ≠ K₂ → Disjoint (id K₁) (id K₂) :=
     fun K₁ h₁ K₂ h₂ hne => G.killers_disjoint hq hS h₁ h₂ hne
   have hunion : (G.killers S k q).biUnion id ⊆ S := by
     intro x hx
     obtain ⟨K, hK, hxK⟩ := Finset.mem_biUnion.1 hx
     exact ((G.mem_killers).1 hK).1 hxK
   have hcard : ((G.killers S k q).biUnion id).card = G.kappa S k q * k := by
-    rw [Finset.card_biUnion hdisj, Finset.sum_const_nat (fun K hK => ((G.mem_killers).1 hK).2.1)]
+    rw [Finset.card_biUnion hdisj]
+    simp only [id]
+    rw [Finset.sum_const_nat (fun K hK => ((G.mem_killers).1 hK).2.1)]
     rfl
   calc G.kappa S k q * k = ((G.killers S k q).biUnion id).card := hcard.symm
     _ ≤ S.card := Finset.card_le_card hunion
 
-/-- Следствие 3 (шаг радиуса обмена): если удалено меньше `κ_k(q)` точек, какой-то убийца `q` не задет —
-`q` остаётся недопустимой в `S \ R`. -/
+/-- Следствие 3 (шаг радиуса обмена): если удалено меньше `κ_k(q)` точек, какой-то убийца `q`
+не задет — `q` остаётся недопустимой в `S \ R`. -/
 theorem exists_killer_disjoint_of_card_lt {S : Finset P} {k : ℕ} {q : P} (hq : q ∉ S)
     (hS : G.NoKPlusOne S k) (R : Finset P) (hR : R.card < G.kappa S k q) :
     ∃ K ∈ G.killers S k q, Disjoint K R := by
   by_contra hcon
-  push_neg at hcon
+  have hcon' : ∀ K ∈ G.killers S k q, ¬ Disjoint K R := fun K hK hd => hcon ⟨K, hK, hd⟩
   let f : Finset P → P := fun K => if h : ∃ x, x ∈ K ∧ x ∈ R then Classical.choose h else q
   have hf : ∀ K ∈ G.killers S k q, f K ∈ K ∧ f K ∈ R := by
     intro K hK
     have h : ∃ x, x ∈ K ∧ x ∈ R := by
-      obtain ⟨x, hx₁, hx₂⟩ := Finset.not_disjoint_iff.1 (hcon K hK)
+      obtain ⟨x, hx₁, hx₂⟩ := Finset.not_disjoint_iff.1 (hcon' K hK)
       exact ⟨x, hx₁, hx₂⟩
     simp only [f, dif_pos h]
     exact Classical.choose_spec h
