@@ -70,11 +70,30 @@ def skew_collinear_cells(n):
     return sum(1 for a, b, c in itertools.combinations(cells, 3) if len({a[0], b[0], c[0]}) == 3 and len({a[1], b[1], c[1]}) == 3 and (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]) == 0)
 
 def noninvariant_measure_witness():
-    """свидетель противника №1: X = {1,2,3}, G = Z/3, k = 1, O = X, N_O ≡ 1, F ≡ const; μ({1}) = μ({2}) = 1/2 НЕ инвариантна ⇒
-    E[1{1 ∈ S}] = 1/2 ≠ |B|/|O| = 1/3 — предпосылка инвариантности μ неустранима."""
-    return {"E_N_B": Fraction(1, 2), "formula": Fraction(1, 3)}
+    """свидетель противника №1, вычисленный (не захардкоженный): X = {1,2,3}, G = Z/3 (сдвиг), k = 1, O = X (одна орбита), N_O(S) = |S| ≡ 1,
+    F ≡ const; μ({1}) = μ({2}) = 1/2 НЕ инвариантна (μ(g{1}) = μ({2}) = 1/2, но μ(g{2}) = μ({3}) = 0). B = {1}: E[N_B] = μ({1}) = 1/2,
+    а формула |B|·N_O/|O| = 1/3 — предпосылка инвариантности μ неустранима. Возвращает также проверку инвариантности."""
+    X = (1, 2, 3); mu = {frozenset({1}): Fraction(1, 2), frozenset({2}): Fraction(1, 2)}
+    g = lambda S: frozenset(((x % 3) + 1) for x in S)            # сдвиг 1→2→3→1
+    invariant = all(mu.get(g(S), Fraction(0)) == m for S, m in mu.items())
+    B = {frozenset({1})}; O = {frozenset({x}) for x in X}
+    E_N_B = sum(m * sum(1 for A in B if A <= S) for S, m in mu.items())
+    N_O = {sum(1 for A in O if A <= S) for S in mu}
+    return {"E_N_B": E_N_B, "formula": Fraction(len(B), len(O)) * next(iter(N_O)), "mu_invariant": invariant, "N_O_values": N_O}
+
+def variance_by_type(n):
+    """второй момент (граница 4): точные E[T | тип], Var[T | тип], P(T = 0 | тип) по всем конфигурациям; при n = 6 — 67 950 штук (≈ 1 мин)."""
+    acc = collections.defaultdict(list)
+    for S in configs(n): acc[cycle_type(S, n)].append(collinear_triples(S))
+    out = {}
+    for t, v in acc.items():
+        m = Fraction(sum(v), len(v)); out[t] = {"count": len(v), "mean": m, "var": Fraction(sum((Fraction(x) - m) ** 2 for x in v), len(v)),
+                                                "p_zero": Fraction(sum(1 for x in v if x == 0), len(v))}
+    return out
 
 if __name__ == "__main__":
     for n in (4, 5, 6):
         ok, means = statement(n); print(f"n={n}: типов {len(means)}, E[T|тип] одинаково: {ok}; значение {next(iter(means.values()))}")
-    varies, m = boundary_case(4); ratio_ok = boundary_case.ratio_ok; print("граница (маргиналы не фиксированы): E[косых коллинеарных | профиль строк] зависит от профиля:", varies, "; общая форма E[N_B|𝒜]·|O| = |B|·E[N_O|𝒜] держится:", ratio_ok)
+    w = noninvariant_measure_witness(); print("граница 1 (неинвариантная μ): E[N_B] =", w["E_N_B"], "≠ формула", w["formula"], "; μ инвариантна:", w["mu_invariant"])
+    vt = variance_by_type(4); print("второй момент n=4:", {t: (str(v["var"]), str(v["p_zero"])) for t, v in vt.items()})
+    varies, m = boundary_case(4); ratio_ok = boundary_case.ratio_ok; assert ratio_ok, "общая форма нарушена"; print("граница (маргиналы не фиксированы): E[косых коллинеарных | профиль строк] зависит от профиля:", varies, "; общая форма E[N_B|𝒜]·|O| = |B|·E[N_O|𝒜] держится:", ratio_ok)
