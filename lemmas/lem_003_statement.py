@@ -5,8 +5,11 @@
 (M — одна из 48 знаковых перестановочных матриц, действующая относительно центра куба). Тогда:
   (i)   если M = −I (инверсия),                      то |S| ≤ 3 (и S ⊂ прямая через центр);
   (ii)  если M — отражение (det −1, след 1),          то |S| ≤ 5 (вне зеркала ≤ 2 точки, на зеркале ≤ 3);
-  (iii) если M — поворот порядка 4 (det 1, порядок 4), то S лежит на оси поворота, |S| ≤ 3.
-Для полуоборотов, поворотов порядка 3 и поворотных отражений порядка 4 ограничения такого рода нет (см. boundary_cases)."""
+  (iii) если M — поворот порядка 4 (det 1, порядок 4), то S лежит на оси поворота, |S| ≤ 3;
+  (iv)  если M — поворотное отражение порядка 6 (det −1, порядок 6), то M³ = −I и по (i) |S| ≤ 3, S на прямой через центр.
+В случаях (i), (iii), (iv) S коллинеарно (v2, противник №1). Для полуоборотов, поворотов порядка 3 и поворотных отражений порядка 4
+ограничения такого рода нет (см. boundary_cases). При |S| ≥ 4 запрет «четыре в плоскости» влечёт «нет трёх на прямой» (тройка на прямой
+плюс любая четвёртая точка компланарны), поэтому модели «≤ 3 на плоскости» и «≤ 3 на плоскости и ≤ 2 на прямой» различаются только при |S| ≤ 3."""
 import itertools, random
 
 # ---------- группа куба: знаковые перестановочные матрицы 3×3 как кортежи из 9 чисел ----------
@@ -44,7 +47,8 @@ def kind(M):
     if d == 1: return {2: 'half_turn', 3: 'rotation3', 4: 'rotation4'}[o]
     return {4: 'rotoreflection4', 6: 'rotoreflection6'}[o]
 
-BOUND = {'inversion': 3, 'reflection': 5, 'rotation4': 3}      # виды движений, к которым лемма применима, и её границы
+BOUND = {'inversion': 3, 'reflection': 5, 'rotation4': 3, 'rotoreflection6': 3}   # виды движений, к которым лемма применима, и границы
+COLLINEAR_KINDS = {'inversion', 'rotation4', 'rotoreflection6'}                    # где S к тому же лежит на одной прямой
 
 # ---------- геометрия ----------
 def coplanar(p, a, b, c):
@@ -63,8 +67,17 @@ def statement(S, M, n):
     k = kind(M)
     if k not in BOUND or not invariant(S, M, n) or has_coplanar4(S): return True
     if len(S) > BOUND[k]: return False
-    if k == 'rotation4':      # усиление: все точки на оси — неподвижны под M
-        return all(act(M, c, n) == c for c in S)
+    if k == 'rotation4' and not all(act(M, c, n) == c for c in S): return False      # усиление: все точки на оси — неподвижны под M
+    if k in COLLINEAR_KINDS and not collinear_set(S): return False                   # усиление v2: S на одной прямой
+    return True
+
+def collinear_set(S):
+    S = list(S)
+    if len(S) <= 2: return True
+    a, b = S[0], S[1]; u = [b[i] - a[i] for i in range(3)]
+    for c in S[2:]:
+        v = [c[i] - a[i] for i in range(3)]
+        if (u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]) != (0, 0, 0): return False
     return True
 
 # ---------- генератор: случайное M-инвариантное максимальное множество (орбитный рост) ----------
@@ -88,7 +101,7 @@ def grow(rnd, M, n):
         if clean_add(S, o): S = S + o
     return S
 
-def generate(rnd, n=5, kinds=('inversion', 'reflection', 'rotation4')):
+def generate(rnd, n=5, kinds=('inversion', 'reflection', 'rotation4', 'rotoreflection6')):
     """случайное движение нужного вида и случайное максимальное M-инвариантное S ⊂ [n]³ без четырёх компланарных."""
     Ms = [M for M in all_matrices() if kind(M) in kinds]
     M = rnd.choice(Ms)
