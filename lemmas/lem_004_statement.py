@@ -68,9 +68,11 @@ def naive_skew_ratio(n):
     """наивная модель «2n клеток равномерно», но только косые тройки, делённая на E[T]: 0.600 (n=4) … → 1 (граница (а) v2)."""
     return Fraction(c_transversal(n) * comb(2*n, 3), comb(n*n, 3)) / formula(n)
 
-def guy_kelly(n):
+def naive_uniform(n):
     """НАША наивная модель «2n клеток равномерно» (атрибуция Гаю–Келли — UNSPECIFIED до чтения первоисточника)."""
     return Fraction(A000938(n) * comb(2*n, 3), comb(n*n, 3))
+
+guy_kelly = naive_uniform   # старое имя — для тестов коллеги; модель НАША, не Гая–Келли
 
 def boundary_cases(n=4):
     """(а) без фиксированных маргиналов (равномерные 2n-подмножества) среднее другое — и равно GK; (б) неинвариантный признак
@@ -82,10 +84,12 @@ def boundary_cases(n=4):
     for S in L2.configs(n):
         k = sum(1 for r, c in S if r % 2 == 1 and c % 2 == 1); acc.setdefault(k, [0, 0]); acc[k][0] += 1; acc[k][1] += L2.collinear_triples(S)
     by_parity = {k: Fraction(v[1], v[0]) for k, v in sorted(acc.items())}
-    return {"uniform_subsets_mean": uniform, "guy_kelly": guy_kelly(n), "formula": formula(n), "by_parity_class": by_parity}
+    return {"uniform_subsets_mean": uniform, "guy_kelly": naive_uniform(n), "formula": formula(n), "by_parity_class": by_parity}
 
 if __name__ == "__main__":
-    for n in (3, 4, 5): print(f"n={n}: точно {exact(n)}, формула {formula(n)}, GK {guy_kelly(n)} (×{float(guy_kelly(n)/formula(n)):.2f}), утверждение: {statement(n)}")
+    for n in (3, 4, 5): print(f"n={n}: точно {exact(n)}, формула {formula(n)}, наивная равномерная {naive_uniform(n)} (×{float(naive_uniform(n)/formula(n)):.2f}), утверждение: {statement(n)}")
     for n, m in ((4, 1), (5, 1), (4, 3), (5, 3)): print(f"m-регулярно (n={n}, m={m}): точно {exact_m(n, m)}, формула {formula_m(n, m)}, утверждение: {statement_m(n, m)}")
-    print("наивная без осевых / E[T]:", {n: round(float(naive_skew_ratio(n)), 3) for n in (4, 10, 20, 100)})
-    b = boundary_cases(4); print("граница n=4: равномерные 8-подмножества:", b["uniform_subsets_mean"], "= GK:", b["uniform_subsets_mean"] == b["guy_kelly"], "; по классу чётности:", {k: str(v) for k, v in b["by_parity_class"].items()})
+    print("τ_m у всех конфигураций:", {(n, m): (sorted({transversal_count(S) for S in configs_m(n, m)}), tau_m(n, m)) for n, m in ((4, 1), (5, 1), (4, 3), (5, 2), (5, 3))})
+    print("наивная без осевых / E[T] (граница (а)):", {n: round(float(naive_skew_ratio(n)), 3) for n in (4, 6, 10, 20, 46, 100, 300)})
+    print("(1 − r)·n → 3:", {n: round(float((1 - naive_skew_ratio(n)) * n), 3) for n in (20, 100, 300, 1000)})
+    b = boundary_cases(4); print("граница n=4: равномерные 8-подмножества:", b["uniform_subsets_mean"], "= наивная равномерная:", b["uniform_subsets_mean"] == b["guy_kelly"], "; по классу чётности:", {k: str(v) for k, v in b["by_parity_class"].items()})
