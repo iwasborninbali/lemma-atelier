@@ -7,7 +7,9 @@
    обязано равняться formula(n): Монте-Карло n = 8, 10, 12 в пределах 4 стандартных ошибок.
 4. Зубы: без поправки τ (наивное C(2n,3)) и с GK формула НЕ совпадает с точным средним при n = 4, 5.
 5. Граница: мера, инвариантная только под циклическим сдвигом (циркулянтные конфигурации {i+a, i+b} mod n), даёт другое среднее при n = 7.
-6. A000938 по формуле Ларросы Каньестро = прямой счёт коллинеарных троек клеток, n = 3…7."""
+6. A000938 по формуле Ларросы Каньестро = прямой счёт коллинеарных троек клеток, n = 3…7.
+7–8. Обобщение на m точек в строке и столбце (v2): свой перебор при (n,m) = (4,1), (5,1), (6,1), (4,3), (5,2), (5,3) — E[T_m] = formula_m, τ_m детерминировано;
+   зубы: без осевого члена 2n·C(m,3) при m = 3 не совпадает; при m = 2 formula_m = formula."""
 import itertools, random, unittest
 from fractions import Fraction
 from math import comb
@@ -73,6 +75,36 @@ class TestLem004(unittest.TestCase):
             cells = [(r, c) for r in range(n) for c in range(n)]
             direct = sum(1 for t in itertools.combinations(cells, 3) if collinear(*t))
             self.assertEqual(direct, L.A000938(n))
+
+def all_configs_m(n, m):
+    """все 0/1-матрицы n×n с суммами m по строкам и столбцам (свой код, обобщение all_configs)."""
+    out = []
+    def rec(i, colrem, rows):
+        if i == n:
+            if all(x == 0 for x in colrem): out.append([(r, c) for r, cs in enumerate(rows) for c in cs])
+            return
+        avail = [c for c in range(n) if colrem[c] > 0]
+        for cs in itertools.combinations(avail, m):
+            for c in cs: colrem[c] -= 1
+            rec(i + 1, colrem, rows + [cs])
+            for c in cs: colrem[c] += 1
+    rec(0, [m] * n, []); return out
+
+class TestLem004GeneralM(unittest.TestCase):
+    """обобщение противника №1 (v2): m точек в каждой строке и столбце — E[T_m] = c(n)·τ_m(n)/(6·C(n,3)²) + 2n·C(m,3)."""
+    CASES = ((4, 1, 24), (5, 1, 120), (6, 1, 720), (4, 3, 24), (5, 2, 2040), (5, 3, 2040))
+    def test_7_general_m_exact_matches_formula_m(self):
+        for n, m, count in self.CASES:
+            cf = all_configs_m(n, m); self.assertEqual(len(cf), count, f"число конфигураций (n,m)=({n},{m})")
+            mean = Fraction(sum(T(S) for S in cf), len(cf))
+            self.assertEqual(mean, L.formula_m(n, m), f"(n,m)=({n},{m}): точное {mean} ≠ formula_m {L.formula_m(n, m)}")
+            self.assertEqual({transversal(S) for S in cf}, {L.tau_m(n, m)}, f"τ_m({n},{m}) не детерминировано")
+    def test_8_teeth_axial_term_needed(self):
+        for n, m in ((4, 3), (5, 3)):
+            cf = all_configs_m(n, m); mean = Fraction(sum(T(S) for S in cf), len(cf))
+            without_axial = L.formula_m(n, m) - 2 * n * comb(m, 3)
+            self.assertNotEqual(mean, without_axial, "без осевого члена 2n·C(m,3) формула при m = 3 не должна совпадать")
+            self.assertEqual(L.formula_m(n, 2), L.formula(n), "при m = 2 общая формула обязана совпасть с частной")
 
 if __name__ == "__main__":
     unittest.main()
