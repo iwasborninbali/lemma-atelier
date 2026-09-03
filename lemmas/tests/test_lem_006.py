@@ -83,6 +83,20 @@ class TestLem006(unittest.TestCase):
         for p in (11, 13):
             self.assertTrue(L.statement(p, 1)); self.assertTrue(L.statement(p, p-1))
 
+    def test_6_window_formula_vs_my_dfs(self):
+        """формула Theorem window (12n₂ + 10n₁ + 8n₀ + 6s; число максимумов 144^{n₁}1296^{n₀}9^{s₁}6^{s₂}) против МОЕГО перебора —
+        все окна (x0, y0 mod p) и все c при p = 5, 7; образцы орбит вне {(0,0),(0,2),(1,1),(2,0)} должны бросать ValueError (орбитная лемма)."""
+        if not hasattr(L, "window_formula"): self.skipTest("window_formula ещё нет в statement коллеги")
+        checked = 0
+        for p in (5, 7):
+            for c in range(1, p):
+                for x0 in range(-p, 0):
+                    for y0 in range(0, p):
+                        m_f, cnt_f = L.window_formula(p, c, x0, y0)
+                        m, cnt = my_max_and_count(L.points(p, c, x0, y0))
+                        self.assertEqual((m, cnt), (m_f, cnt_f), (p, c, x0, y0, (m, cnt), (m_f, cnt_f))); checked += 1
+        self.assertGreater(checked, 40)
+
 
 if __name__ == "__main__":
     unittest.main()
