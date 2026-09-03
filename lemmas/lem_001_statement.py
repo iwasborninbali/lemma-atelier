@@ -22,7 +22,9 @@ def killers(S, q, k):
     return [sub for sub in itertools.combinations(S, k) if collinear([q, *sub])]
 
 def statement(S, q, k):
-    """True ⟺ утверждение леммы для данных S, q: через каждую p ∈ S проходит ≤ 1 убийца q (при выполненной предпосылке)."""
+    """True ⟺ утверждение леммы для данных S, q: через каждую p ∈ S проходит ≤ 1 убийца q (при выполненной предпосылке).
+    Предпосылка включает q ∉ S и k ≥ 2 (замечание тестов коллеги 3.09): при q ∈ S или k < 2 лемма молчит — возвращаем True."""
+    if q in S or k < 2: return True
     K = killers(S, q, k)
     return all(sum(1 for sub in K if p in sub) <= 1 for p in S)
 
