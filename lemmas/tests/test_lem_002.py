@@ -59,13 +59,25 @@ class TestLem002(unittest.TestCase):
         self.assertEqual(sum(w for S, w in mu_inv.items() if 1 in S), Fraction(1, 3))
 
     def test_7_second_moment_is_not_blind(self):
-        """противник №1, п. 13: Var[T | тип циклов] при n = 6 различна по типам (точно, дробями) — граница леммы: второй момент видит F."""
-        n = 6; acc = collections.defaultdict(lambda: [0, 0, 0])
+        """противник №1 п. 13 и №2 п. 4: Var[T | тип циклов] при n = 6 различна — и равна заявленным в lem-002 v2 дробям
+        (285968/16875 (2,2,2), 1313533/101250 (4,2), 247199/22500 (6), 245599/22500 (3,3)); P(T = 0 | тип) = 0, 1/4050, 7/7200, 1/1800."""
+        n = 6; acc = collections.defaultdict(lambda: [0, 0, 0, 0])
         for S in L.configs(n):
-            t = L.cycle_type(S, n); T = L.collinear_triples(S); acc[t][0] += 1; acc[t][1] += T; acc[t][2] += T * T
+            t = L.cycle_type(S, n); T = L.collinear_triples(S); a = acc[t]; a[0] += 1; a[1] += T; a[2] += T * T; a[3] += (T == 0)
         var = {t: Fraction(v[2], v[0]) - Fraction(v[1], v[0]) ** 2 for t, v in acc.items()}
-        self.assertGreaterEqual(len(var), 3)
-        self.assertGreater(len(set(var.values())), 1, var)
+        p0 = {t: Fraction(v[3], v[0]) for t, v in acc.items()}
+        self.assertEqual(var[(2, 2, 2)], Fraction(285968, 16875)); self.assertEqual(var[(4, 2)], Fraction(1313533, 101250))
+        self.assertEqual(var[(6,)], Fraction(247199, 22500)); self.assertEqual(var[(3, 3)], Fraction(245599, 22500))
+        self.assertEqual(p0, {(2, 2, 2): 0, (4, 2): Fraction(1, 4050), (6,): Fraction(7, 7200), (3, 3): Fraction(1, 1800)})
+        self.assertEqual({t: v[0] for t, v in acc.items()}, {(6,): 43200, (4, 2): 16200, (3, 3): 7200, (2, 2, 2): 1350})
+        self.assertGreater(len(set(var.values())), 1)
+
+    def test_8_general_form_ratio_checked_by_assert(self):
+        """противник №2 п. 7(в): усиленная общая форма E[N_B | 𝒜]·|O| = |B|·E[N_O | 𝒜] должна проверяться ассертом, не печатью."""
+        L.boundary_case(4)
+        ratio_ok = getattr(L.boundary_case, "ratio_ok", None)
+        self.assertIsNotNone(ratio_ok, "boundary_case не выставляет ratio_ok")
+        self.assertTrue(ratio_ok)
 
 if __name__ == "__main__":
     unittest.main()
