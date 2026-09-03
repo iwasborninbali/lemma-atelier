@@ -148,11 +148,12 @@ def generate(rnd, pmax=13):
     p = rnd.choice(primes); c = rnd.randrange(1, p); x0 = rnd.randrange(-p, p); y0 = rnd.randrange(-p, p)
     return p, c, x0, y0
 
-def boundary_cases():
-    """за границей условий (все при p = 5 — у объединений компоненты велики для перебора): (а) составной модуль m = 9 — лемма Лагранжа
+def boundary_cases(p=5):
+    """за границей условий (только p = 5 — у объединений компоненты велики для перебора; иное p — ValueError, без молчаливой подмены): (а) составной модуль m = 9 — лемма Лагранжа
     (≤ 2 класса на прямой) не работает, богатые прямые наклонов −1, 1/2, 1, 2; (б) окно шире 2p (2p+1 столбцов) — максимум 13 > 12 = 3(p−1);
     (в) две гиперболы H(1) ∪ H(−1) в окне HJSW — максимум 14 > 12 (оценка заметки ≤ 4(p−1) − 4m₈ относится к 19 ≤ p ≤ 1500, p = 5 вне неё)."""
-    out = {}; p = 5
+    if p != 5: raise ValueError("boundary_cases считается только при p = 5 (перебор объединений при бо́льших p не укладывается)")
+    out = {}
     m = 9; h = 4; Pm = [(x, y) for x in range(-h, 3 * h + 2) for y in range(0, 2 * m) if (x * y - 1) % m == 0]
     Lm = rich_lines(Pm); out["composite_modulus_9_slopes"] = sorted({slope(k) for k in Lm}, key=str)
     h = (p - 1) // 2; Pw = [(x, y) for x in range(-h, 3 * h + 3) for y in range(0, 2 * p) if (x * y - 1) % p == 0]
