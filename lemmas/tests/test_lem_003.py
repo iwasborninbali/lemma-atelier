@@ -2,8 +2,8 @@
 M-инвариантных максимальных S (n = 5, 6, 7; инверсия, отражение, поворот порядка 4) и непустоту; (2) ТОЧНОСТЬ границ — множества,
 на которых они достигаются (3 коллинеарных через центр при инверсии, 2 + 3 при отражении, 3 на оси при повороте-4), иначе лемма
 могла бы быть слабой; (3) граница: полуоборот и поворот-3 дают большие множества, S4-орбита некомпланарна, аналог для «трёх на прямой»
-ложен; (4) следствие для страт: среди 33 классов сопряжённости подгрупп O_h тривиализуются ровно те, что содержат инверсию,
-отражение или поворот порядка 4 — остаётся 9 классов (в нумерации cube_strata_planes.py: c00, c02, c03, c06, c09, c10, c14, c17, c27);
+ложен; (4) следствие для страт: среди 33 классов сопряжённости подгрупп O_h (все 98 подгрупп замыканием снизу) тривиализуются ровно те,
+что содержат инверсию, отражение или поворот порядка 4 — остаётся 9 классов (в нумерации cube_strata_planes.py: c00, c02, c03, c06, c09, c10, c14, c17, c27);
 (5) чётное n: при инверсии центр — не клетка, |S| ≤ 2 (пары антиподов коллинеарны через центр только по одной).
 Запуск: python3 -m unittest lemmas.tests.test_lem_003"""
 import itertools, random, sys, unittest
@@ -27,18 +27,25 @@ def closure(gens):
 def inv(A): return tuple(A[3*j+i] for i in range(3) for j in range(3))
 
 
+def all_subgroups(G):
+    """ВСЕ подгруппы замыканием снизу от {E}: к каждой найденной подгруппе добавляем по одному элементу (противник №1: доказательно,
+    а не «≤ 2 генератора»); для O_h — 98 подгрупп."""
+    Gl = sorted(G); found = {frozenset({L.IDENT})}; frontier = [frozenset({L.IDENT})]
+    while frontier:
+        new = []
+        for H in frontier:
+            for g in Gl:
+                if g in H: continue
+                K = closure(list(H) + [g])
+                if K not in found: found.add(K); new.append(K)
+        frontier = new
+    return found
+
+
 def subgroup_classes(G):
-    """как в ~/cube_strata_planes.py (подгруппы, порождённые ≤ 2 элементами, и их произведения; классы сопряжённости)."""
-    subs = set(); Gl = sorted(G)
-    for a in Gl: subs.add(closure([a]))
-    for i, a in enumerate(Gl):
-        for b in Gl[i+1:]: subs.add(closure([a, b]))
-    base = list(subs)
-    for i in range(len(base)):
-        for j in range(i+1, len(base)):
-            if len(base[i]) * len(base[j]) <= 192: subs.add(closure(list(base[i] | base[j])))
-    classes = {}
-    for S in subs:
+    """классы сопряжённости всех подгрупп (для O_h — 33), в том же порядке, что cube_strata_planes.py (по порядку и по элементам)."""
+    Gl = sorted(G); classes = {}
+    for S in all_subgroups(G):
         key = min(tuple(sorted(frozenset(L.mul(L.mul(g, h), inv(g)) for h in S))) for g in Gl)
         classes.setdefault(key, S)
     return sorted(classes.values(), key=lambda S: (len(S), sorted(S)))
@@ -80,18 +87,19 @@ class TestLem003(unittest.TestCase):
         self.assertFalse(L.has_coplanar4(b["rotoreflection4_orbit_noncoplanar"][0]))
         S, M, n = b["no_three_collinear_analog_fails"]
         self.assertTrue(L.invariant(S, M, n) and L.has_coplanar4(S))
-        self.assertFalse(any(L.coplanar(a, b_, c_, c_) for a, b_, c_ in itertools.combinations(S, 3)) and False)  # нет трёх коллинеарных проверяется ниже
         col = lambda p, q, r: all(x == 0 for x in [(q[1]-p[1])*(r[2]-p[2])-(q[2]-p[2])*(r[1]-p[1]), (q[2]-p[2])*(r[0]-p[0])-(q[0]-p[0])*(r[2]-p[2]), (q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])])
         self.assertFalse(any(col(*t) for t in itertools.combinations(S, 3)), "аналог: без трёх коллинеарных, но с четырьмя компланарными")
 
     def test_4_strata_filter_nine_classes_remain(self):
-        classes = subgroup_classes(frozenset(L.all_matrices()))
+        G = frozenset(L.all_matrices())
+        self.assertEqual(len(all_subgroups(G)), 98, "подгрупп O_h должно быть 98 (кристаллография)")
+        classes = subgroup_classes(G)
         self.assertEqual(len(classes), 33)
         alive = [i for i, H in enumerate(classes) if not any(L.kind(M) in L.BOUND for M in H)]
         self.assertEqual(alive, [0, 2, 3, 6, 9, 10, 14, 17, 27])
         # у выживших классов нет ни инверсии, ни отражений, ни поворотов порядка 4 — только полуобороты, повороты-3 и S4/S6
         kinds = {L.kind(M) for i in alive for M in classes[i]}
-        self.assertTrue(kinds <= {"identity", "half_turn", "rotation3", "rotoreflection4", "rotoreflection6"}, kinds)
+        self.assertTrue(kinds <= {"identity", "half_turn", "rotation3", "rotoreflection4"}, kinds)   # S6 ∈ H ⇒ −I ∈ H: S6 у выживших не бывает
 
     def test_5_even_n_inversion_two(self):
         n = 6; rnd = random.Random(7); best = 0
